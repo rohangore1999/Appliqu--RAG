@@ -1,5 +1,7 @@
 # RAG Appliqué - Design System Documentation Assistant
 
+Component Desgin System Link ~ https://applique.myntra.com/components/accordion 
+
 A Retrieval-Augmented Generation (RAG) system for Myntra's Appliqué Design System documentation, providing intelligent answers about UI components.
 
 ## Overview
@@ -93,4 +95,66 @@ The system will:
 - Modify the base URL in `ingest.py` to scrape different documentation sites
 - Adjust the chunk size and overlap in `ingest.py` to optimize retrieval
 - Update the system prompt in `query.py` to change the response format
+
+## Example Queries
+
+```
+-> python app.py --query "How do I use <Layout> component in Appliqué?" 
+```
+
+```
+Processing query: How do I use <Layout> component in Appliqué?
+Query routed to collections: ['applique_layout']
+Found 2 results in collection 'applique_layout'
+
+Query: How do I use <Layout> component in Appliqué?
+
+Top results:
+
+1. Component: layout
+   URL: https://applique.myntra.com/components/layout
+   Content preview: Component: layout
+URL: https://applique.myntra.com/components/layout...
+
+2. Component: layout
+   URL: https://applique.myntra.com/components/layout
+   Content preview: </Layout>
+)
+ return (
+  <Layout type="row">
+    <div style={{ padding: '16px', border: '1px solid' }}>One</div>
+    <div style={{ padding: '16px', bor...
+
+RAG Response:
+1. **Brief explanation:** The `<Layout>` component in Myntra's Appliqué Design System is used to manage the arrangement and spacing of elements on a webpage. It helps in creating responsive layouts by providing flexibility in positioning different UI components.
+
+2. **Key features and variations:**
+   - The `type` prop defines the layout direction and can be set to "row" for a horizontal layout or "column" for a vertical layout.
+   - The `spacing` prop can be used to set the spacing between the child elements.
+   - The `<Layout>` component supports responsive design, making it easy to create layouts that adapt to different screen sizes.
+  
+3. **Code example:**
+```jsx
+import React from 'react';
+import Layout from 'applique/components/layout';
+
+const MyComponent = () => {
+  return (
+    <Layout type="row" spacing={16}>
+      <div style={{ padding: '16px', border: '1px solid' }}>One</div>
+      <div style={{ padding: '16px', border: '1px solid' }}>Two</div>
+      <div style={{ padding: '16px', border: '1px solid' }}>Three</div>
+      <div style={{ padding: '16px', border: '1px solid' }}>Four</div>
+    </Layout>
+  );
+};
+
+export default MyComponent;
+
+4. **Important props or API details:**
+   - `type`: Specifies the layout direction ("row" or "column").
+   - `spacing`: Sets the spacing between child elements.
+
+By using the `<Layout>` component and adjusting its props, you can easily create structured and visually appealing layouts in your web application.
+```
 
