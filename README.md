@@ -6,7 +6,8 @@
 
 ## Working Demo
 
-<video src="./media/demo.mov" controls width="auto"></video>
+
+[▶️ Watch the Demo Video of MCP Client-Server Interaction](https://drive.google.com/file/d/1gcgP5YXPLrxIgjqoiN2YhkbA8fKmucks/view?usp=sharing)
 
 
 ![rag image](./media/chat-example.png "Chat Example")
