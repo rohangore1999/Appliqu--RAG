@@ -1,6 +1,19 @@
-# RAG Appliqué - Design System Documentation Assistant
+# RAG - Myntra Appliqué - Design System Documentation Assistant
 
-Component Desgin System Link ~ https://applique.myntra.com/components/accordion 
+
+## Architecture:
+![rag flow image](./media/architecture.png "RAG FLOW")
+
+## Working Demo
+
+<video src="./media/demo.mov" controls width="auto"></video>
+
+
+![rag image](./media/chat-example.png "Chat Example")
+
+## Overview
+
+Component Design System Link \~ [https://applique.myntra.com/components/accordion](https://applique.myntra.com/components/accordion)
 
 A Retrieval-Augmented Generation (RAG) system for Myntra's Appliqué Design System documentation, providing intelligent answers about UI components.
 
@@ -16,100 +29,85 @@ This project creates a virtual assistant that can answer queries about the Appli
 
 ## System Architecture
 
-The system is divided into three main modules:
+The system is divided into four main modules:
 
 1. **Data Ingestion** (`ingest.py`): Scrapes the Appliqué documentation website, processes content, and stores in Qdrant
 
-   - Web Scraping:
-      - Uses Selenium (headless Chrome) to load documentation pages with JavaScript
-      - Extracts component links from the Appliqué design system site
-      - Scrapes detailed content from each component page including descriptions, code examples, API properties, and images
-      
-   - Content Processing:
-      - Extracts component names from URLs
-      - Organizes scraped content into structured documents
-      - Adds metadata like URLs, timestamps, and content indicators
+   - **Web Scraping**:
 
-   - Text Chunking:
-      - Splits long documents into smaller chunks (1000 characters with 200 character overlap)
-      - Ensures chunks are appropriate size for embedding and retrieval
+     - Uses Selenium (headless Chrome) to load documentation pages with JavaScript
+     - Extracts component links from the Appliqué design system site
+     - Scrapes detailed content from each component page including descriptions, code examples, API properties, and images
 
-   - Vector Database Creation:
-      - Creates a separate Qdrant collection for each component
-      - Converts text chunks to embeddings using OpenAI's embedding model
-      - Stores these vector embeddings in Qdrant for semantic search
+   - **Content Processing**:
 
-   - Organization:
-      - Maintains separate collections per component for targeted searching
-      - Returns component names for the main app to save for future queries
+     - Extracts component names from URLs
+     - Organizes scraped content into structured documents
+     - Adds metadata like URLs, timestamps, and content indicators
 
-   This is the "ingestion" part of the RAG system that builds the knowledge base for later retrieval.
+   - **Text Chunking**:
 
+     - Splits long documents into smaller chunks (1000 characters with 200 character overlap)
+     - Ensures chunks are appropriate size for embedding and retrieval
+
+   - **Vector Database Creation**:
+
+     - Creates a separate Qdrant collection for each component
+     - Converts text chunks to embeddings using OpenAI's embedding model
+     - Stores these vector embeddings in Qdrant for semantic search
 
 2. **Query Processing** (`query.py`): Handles user queries, retrieves relevant documentation, and generates responses
 
-   - Query Routing System:
-      - Uses GPT-3.5 to analyze user questions and determine which component collections to search
-      - Takes a user query like "How do I create a modal?" and routes it to the relevant components ("modal")
-      - Returns collection names to search based on the query's intent
+   - **Query Routing System**:
 
-   - Vector Similarity Search:
-      - Connects directly to Qdrant database for efficient vector searching
-      - Converts user queries to embeddings using OpenAI's embedding model
-      - Performs semantic search to find documentation chunks most relevant to the query
-      - Returns top matching documents from each relevant collection
+     - Uses GPT-3.5 to analyze user questions and determine which component collections to search
+     - Routes user queries to the most relevant component collections
 
-   - Multi-Collection Searching:
-      - Searches across multiple component collections when a query might involve multiple components
-      - Aggregates results from all collections
-      - Takes the most relevant results for context building
+   - **Vector Similarity Search**:
 
-   - Answer Generation:
-      - Combines top search results into a cohesive context string
-      - Uses GPT-3.5 with a specialized system prompt that emphasizes practical examples
-      - Constructs comprehensive answers with component explanations, features, code examples, and API details
-      - Formats responses with markdown for better readability
+     - Converts user queries to embeddings
+     - Performs semantic search against the Qdrant database
 
+   - **Multi-Collection Searching**:
+
+     - Searches across multiple components if necessary
+
+   - **Answer Generation**:
+
+     - Aggregates search results
+     - Uses GPT-3.5 to generate structured responses with examples and API details
 
 3. **Application Entry Point** (`app.py`): Command-line interface to run ingestion or queries
 
-   - Configuration and Setup:
-      - Imports necessary modules and loads environment variables
-      - Defines command-line interface with argparse
-      - Checks for required API keys
+   - Handles modes for ingestion (`--ingest`) and querying (`--query`)
+   - Provides direct search into Qdrant collections
+   - Constructs prompts and manages API interactions
 
-   - Direct Vector Search Function:
-      - Implements a function to search directly in a specific component collection
-      - Connects to Qdrant, generates embeddings for the query
-      - Retrieves relevant documents and ranks them by similarity score
-      - Formats search results for debugging output
+4. **MCP Client and Server Communication**
 
-   - Response Generation:
-      - Takes retrieved context and constructs a prompt for OpenAI
-      - Uses a specialized system prompt that structures responses with:
-         - Component explanations
-         - Key features
-         - Code examples (prioritized)
-         - API details
+   This project integrates an **MCP (Model Context Protocol)** based communication layer between the **Cursor IDE (MCP Client)** and the **MCP Server**.
 
-   - Main Application Flow Control:
-      - Handles the --ingest mode by calling functions from ingest.py
-      - Handles the --query mode by calling functions from query.py
-      - Maintains a file to store component names between runs
-      - Provides helpful usage information when run without arguments
+   - **MCP Client (Cursor IDE)**:
 
-4. **Utils** (`utils.py`): Contains utility functions for the project
-   - Component Name Extraction:
-      - extract_component_name(url) extracts the component name from URLs
-      - Uses regex to find the part after '/components/' in the URL path
-      - Example: from "https://applique.myntra.com/components/button" it extracts "button"
+     - Sends queries through **STDIO transport**.
+     - Communicates via standard input/output streams.
 
-   - Collection Name Formatting:
-      - get_collection_name_for_component(component_name) creates standardized collection names
-      - Prefixes all collections with "applique_" for consistency
-      - Replaces dashes with underscores for database compatibility
-      - Example: "modal-dialog" becomes "applique_modal_dialog"
+   - **MCP Server**:
 
+     - Receives user queries via STDIO.
+     - Processes the query through the RAG pipeline (similarity search + LLM generation).
+     - Returns the response back to the MCP Client through STDIO.
+
+   **Transport Layer Details**:
+
+   - **STDIO (Standard I/O)**: Query and response via process pipes.
+   - **SSE (Server-Sent Events)**: (Optional) for potential future real-time streaming responses.
+
+> Using MCP with STDIO transport allows tight integration into the IDE, giving developers intelligent documentation retrieval and assistance inside their coding environment.
+
+5. **Utils** (`utils.py`): Utility functions
+   - Extracts component names from URLs
+   - Formats collection names for Qdrant compatibility
 
 ## Usage
 
@@ -117,54 +115,46 @@ The system is divided into three main modules:
 
 To scrape and ingest the Appliqué documentation:
 
-```
+```bash
 python app.py --ingest
 ```
-
-This will:
-
-1. Visit the Appliqué documentation site
-2. Extract all component pages
-3. Process and store content in Qdrant collections
-4. Save component names to a file for later use
 
 ### Querying the System
 
 To ask a question about Appliqué components:
 
-```
+```bash
 python app.py --query "How do I create a modal dialog in Appliqué?"
 ```
-
-The system will:
-
-1. Determine which components are relevant to the query
-2. Retrieve documentation from those component collections
-3. Generate a contextually relevant response with code examples
 
 ## How It Works
 
 ### Data Ingestion Process
 
-1. **Web Scraping**: Uses Selenium to scrape dynamic content from the Appliqué documentation
-2. **Content Extraction**: Extracts descriptions, code examples, API props, and images
-3. **Document Processing**: Creates structured documents for each component
-4. **Text Chunking**: Splits documents into manageable chunks
-5. **Embedding Generation**: Creates vector embeddings using OpenAI's embedding model
-6. **Storage**: Stores embeddings and metadata in Qdrant collections
+1. Web Scraping using Selenium
+2. Content Extraction of descriptions, code, and API properties
+3. Document Processing into chunks
+4. Embedding Generation using OpenAI
+5. Storage in Qdrant collections
 
 ### Query Processing
 
-1. **Query Routing**: Uses LLM to determine which components are relevant to the query
-2. **Vector Search**: Retrieves the most similar chunks from relevant collections
-3. **Context Building**: Combines retrieved content to create a rich context
-4. **Response Generation**: Uses OpenAI to create a natural language response with code examples
+1. Query Routing to determine relevant components
+2. Vector Search across multiple collections
+3. Context Building
+4. Natural Language Response Generation
+
+### MCP Communication (IDE Integration)
+
+1. Cursor IDE sends query over STDIO
+2. MCP Server processes and retrieves documentation
+3. Response is returned back to Cursor IDE in real-time
 
 ## Customization
 
-- Modify the base URL in `ingest.py` to scrape different documentation sites
-- Adjust the chunk size and overlap in `ingest.py` to optimize retrieval
-- Update the system prompt in `query.py` to change the response format
+- Modify scraping source by changing the base URL in `ingest.py`
+- Adjust chunk size and overlap settings
+- Customize system prompts for response generation
 
 ## Example Queries
 
@@ -293,4 +283,3 @@ In the code above, a stack Layout is used to vertically arrange Progress compone
 - `space`: Accepts an array to define relative spacing between elements.
 
 By utilizing the Layout component with Progress components, you can create a structured and visually appealing layout for displaying progress bars in your application.
-```
