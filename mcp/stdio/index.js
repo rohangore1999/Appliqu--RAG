@@ -4,7 +4,7 @@ import { z } from "zod";
 
 // Create an MCP server
 const server = new McpServer({
-  name: "Applique Component RAG",
+  name: "Applique Component RAG - STDIO",
   version: "1.0.0",
 });
 
