@@ -1,14 +1,12 @@
 # RAG - Myntra Appliqué - Design System Documentation Assistant
 
-
 ## Architecture:
+
 ![rag flow image](./media/architecture.png "RAG FLOW")
 
 ## Working Demo
 
-
 [▶️ Watch the Demo Video of MCP Client-Server Interaction](https://drive.google.com/file/d/1gcgP5YXPLrxIgjqoiN2YhkbA8fKmucks/view?usp=sharing)
-
 
 ![rag image](./media/chat-example.png "Chat Example")
 
@@ -160,11 +158,12 @@ python app.py --query "How do I create a modal dialog in Appliqué?"
 ## Example Queries
 
 ### Example 1:
-```
-➜ python app.py --query "How do I use <Layout> component in Appliqué?" 
-```
 
 ```
+➜ python app.py --query "How do I use <Layout> component in Appliqué?"
+```
+
+````
 Processing query: How do I use <Layout> component in Appliqué?
 Query routed to collections: ['applique_layout']
 Found 2 results in collection 'applique_layout'
@@ -194,7 +193,7 @@ RAG Response:
    - The `type` prop defines the layout direction and can be set to "row" for a horizontal layout or "column" for a vertical layout.
    - The `spacing` prop can be used to set the spacing between the child elements.
    - The `<Layout>` component supports responsive design, making it easy to create layouts that adapt to different screen sizes.
-  
+
 3. **Code example:**
 ```jsx
 import React from 'react';
@@ -218,15 +217,15 @@ export default MyComponent;
    - `spacing`: Sets the spacing between child elements.
 
 By using the `<Layout>` component and adjusting its props, you can easily create structured and visually appealing layouts in your web application.
-```
-
+````
 
 ### Example 2:
-```
-➜ python app.py --query "How do I use Layout with progress bar"       
-```
 
 ```
+➜ python app.py --query "How do I use Layout with progress bar"
+```
+
+````
 Processing query: How do I use Layout with progress bar
 Query routed to collections: ['applique_layout', 'applique_progress']
 Found 2 results in collection 'applique_layout'
@@ -284,3 +283,27 @@ In the code above, a stack Layout is used to vertically arrange Progress compone
 - `space`: Accepts an array to define relative spacing between elements.
 
 By utilizing the Layout component with Progress components, you can create a structured and visually appealing layout for displaying progress bars in your application.
+````
+
+# MCP Configs
+
+`mcp.json`
+
+```json
+{
+  "mcpServers": {
+    // STDIO Transport
+    "applique-rag-stdio": {
+      "command": "node",
+      "args": [
+        "/Users/rohangore/Documents/projects/python/rag-appliqué/mcp/stdio/index.js"
+      ]
+    },
+
+    // SSE Transport
+    "applique-rag-sse": {
+      "url": "http://localhost:3001/sse"
+    }
+  }
+}
+```
