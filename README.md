@@ -307,3 +307,16 @@ By utilizing the Layout component with Progress components, you can create a str
   }
 }
 ```
+
+# To connect Frontend with MCP Server
+ref: https://ai-sdk.dev/docs/reference/ai-sdk-core/create-mcp-client#experimental_createmcpclient
+
+```javascript
+const mcpClient = await experimental_createMCPClient({
+  transport: {
+    type: "sse",
+    url: "http://localhost:8081/sse",
+  },
+  name: "Order Service",
+});
+```
