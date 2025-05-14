@@ -2,8 +2,17 @@ import express from "express";
 import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
+import cors from "cors";
 
 const app = express();
+
+app.use(
+  cors({
+    origin: "http://localhost:5173", // allow your frontend origin
+    methods: ["GET", "POST"], // allow specific HTTP methods
+    credentials: true, // if you use cookies or credentials
+  })
+);
 
 const server = new McpServer(
   {
@@ -53,12 +62,21 @@ server.tool(
 let transport = null;
 
 app.get("/sse", async (req, res) => {
+  res.setHeader("Access-Control-Allow-Origin", "http://localhost:5173");
+  res.setHeader("Access-Control-Allow-Credentials", "true");
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
+
   transport = new SSEServerTransport("/messages", res);
 
   await server.connect(transport);
 });
 
 app.post("/messages", async (req, res) => {
+  res.setHeader("Access-Control-Allow-Origin", "http://localhost:5173");
+  res.setHeader("Access-Control-Allow-Credentials", "true");
+
   if (transport) {
     await transport.handlePostMessage(req, res);
   }
