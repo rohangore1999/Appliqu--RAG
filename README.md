@@ -2,7 +2,7 @@
 
 ## Architecture:
 
-![rag flow image](./media/architecture.png "RAG FLOW")
+![rag flow image](./media/revamp_architecture.png "RAG FLOW")
 
 ## Working Demo
 

@@ -9,7 +9,8 @@ import {
 import { createOpenAI } from "@ai-sdk/openai";
 
 const openai = createOpenAI({
-  apiKey: "<your-openai-api-key>", // Replace with your OpenAI API key
+  apiKey:
+    "your_key", // Replace with your OpenAI API key
 });
 
 export default function Chat() {
@@ -29,20 +30,32 @@ export default function Chat() {
 
   const speak = async (text) => {
     try {
-      const { audio } = await generateSpeech({
+      const audio = await generateSpeech({
         model: openai.speech("tts-1"),
         voice: "coral", // or coral, alloy, etc.
-        text: "Hello from the AI SDK!",
-        outputFormat: "mp3", // 👈 ensures browser compatibility
+        text: text,
         instructions: "Speak in a cheerful and positive tone.",
       });
 
-      //   debugger;
-      const audioBlob = new Blob([audio], { type: "audio/mpeg" });
+      const generatedAudio = audio.audio;
+
+      const audioBlob = new Blob([generatedAudio?.uint8ArrayData], {
+        type: "audio/mp3",
+      });
       const url = URL.createObjectURL(audioBlob);
 
       const audioElement = new Audio(url);
-      await audioElement.play();
+      // Play the audio
+      audioElement
+        .play()
+        .then(() => console.log("Audio is playing"))
+        .catch((error) => console.error("Error playing audio:", error));
+
+      // Optional: Release the URL when done (e.g., when audio ends)
+      audioElement.onended = () => {
+        URL.revokeObjectURL(url);
+        console.log("Audio playback ended, URL revoked");
+      };
     } catch (error) {
       console.error("Error generating speech:", error);
     }
@@ -72,11 +85,15 @@ export default function Chat() {
         const toolCallResponse = response.toolResults[0].result.content[0].text;
         console.log({ toolCallResponse });
 
+        speak(toolCallResponse);
+
         setMessages((prev) => [
           ...prev,
-          { from: "assistant", text: toolCallResponse.response },
+          { from: "assistant", text: toolCallResponse },
         ]);
       } else {
+        speak(response.text);
+
         setMessages((prev) => [
           ...prev,
           { from: "assistant", text: response.text },
