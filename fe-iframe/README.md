@@ -1,12 +1,47 @@
-# React + Vite
+## FE to MCP Server Architecture:
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+![rag flow image](../media/fe_mcp_architecture.png "FE to MCP Server")
 
-Currently, two official plugins are available:
+[▶️ Watch the Demo Video of Chat Interaction](https://drive.google.com/file/d/1Evu24ItxcezhdoV-1LenzGx8ZVNfdzsX/view?usp=sharing)
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+### Architecture Components
 
-## Expanding the ESLint configuration
+1. **Frontend**
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+   - Dashboard App: Main application container
+   - Chat App: Embedded within an IFrame
+   - Communication: Uses postMessage for secure cross-origin communication
+
+2. **Vercel AI SDK Integration**
+
+   - Handles experimental_createMCPClient() for MCP protocol implementation
+   - Manages communication between Frontend and MCP Server
+
+3. **MCP Server**
+
+   - Handles two main types of content:
+     - Images: Processes image-related requests
+     - Text/HTML: Managed by Vercel AI SDK
+   - Implements tool calling functionality
+   - Communicates with Cloud Storage and Backend
+
+4. **Cloud Storage**
+
+   - Stores and manages images
+   - Supports base64 to imageUrl conversion
+   - Provides fetch functionality for image retrieval
+
+5. **Backend Server**
+   - Processes final requests
+   - Handles business logic and data processing
+
+### Flow
+
+1. Dashboard App loads the Chat App in an IFrame
+2. User interactions in Chat App communicate with Dashboard via postMessage
+3. Requests are processed through Vercel AI SDK's MCP client
+4. MCP Server handles requests based on content type:
+   - Image requests interact with Cloud Storage
+   - Text/HTML is processed directly
+5. Processed requests are forwarded to Backend Server
+6. Results are returned through the same chain back to the user interface

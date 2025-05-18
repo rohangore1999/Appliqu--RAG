@@ -7,7 +7,26 @@ import {
   DropdownMenuTrigger,
 } from "../ui/dropdown-menu";
 import { MessageCircle, Mic, Camera, X, Send } from "lucide-react";
-import { mcpClient } from "../../services/mcp";
+import { mcpClient, speak } from "../../services/mcp";
+
+// Loading indicator component with animated dots
+const TypingIndicator = () => {
+  return (
+    <div className="bg-gray-200 text-gray-800 p-3 rounded-lg mr-auto max-w-14 mb-2">
+      <div className="flex items-center">
+        <span className="animate-bounce mx-0.5 h-2 w-2 bg-gray-600 rounded-full"></span>
+        <span
+          className="animate-bounce mx-0.5 h-2 w-2 bg-gray-600 rounded-full"
+          style={{ animationDelay: "0.2s" }}
+        ></span>
+        <span
+          className="animate-bounce mx-0.5 h-2 w-2 bg-gray-600 rounded-full"
+          style={{ animationDelay: "0.4s" }}
+        ></span>
+      </div>
+    </div>
+  );
+};
 
 const ChatBubble = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -16,9 +35,13 @@ const ChatBubble = () => {
   const [chatInput, setChatInput] = useState("");
   const [messages, setMessages] = useState([]);
   const [listening, setListening] = useState(false);
+  const [isLoading, setIsLoading] = useState(false); // Added loading state
   const recognitionRef = useRef(null);
+  const chatContainerRef = useRef(null);
 
   const handleSpeak = () => {
+    speak("Hello from the AI SDK!");
+
     console.log("Speak option selected");
     setActiveIcon("mic");
     setShowChat(false); // Close chat window if open
@@ -30,6 +53,11 @@ const ChatBubble = () => {
     setShowChat(true);
     setActiveIcon("default"); // Keep the chat icon as MessageCircle
     setIsOpen(false);
+
+    // Add timeout to ensure scrolling happens after the chat window is rendered
+    setTimeout(() => {
+      scrollToBottom();
+    }, 100);
   };
 
   const handleSnapshot = () => {
@@ -44,19 +72,7 @@ const ChatBubble = () => {
     setShowChat(false);
   };
 
-  // SENDING EVENTS TO PARENTS
-  // FOR HTML
-  // function requestParentInfo() {
-  //   window.parent.postMessage(
-  //     {
-  //       action: "REQUEST_HTML",
-  //       from: "iframe",
-  //     },
-  //     "*"
-  //   ); // The '*' allows sending to any origin. In production, specify the exact parent origin
-  // }
-
-  // FOR SCREENSHOTS
+  // For manual screenshot.
   function takeScreenshot() {
     console.log("Asking parent for screenshot");
 
@@ -70,34 +86,62 @@ const ChatBubble = () => {
   }
 
   const handleSendMessage = async () => {
-    debugger;
     if (chatInput.trim()) {
       // MCP Client -> Users message
       setMessages([...messages, { text: chatInput, sender: "user" }]);
       setChatInput("");
 
-      const response = await mcpClient(chatInput);
+      // Show loading state
+      setIsLoading(true);
 
-      if (response.toolResults.length) {
-        const toolCallResponse = response.toolResults[0].result.content[0].text;
+      try {
+        const response = await mcpClient(chatInput);
 
+        if (response?.toolResults?.length) {
+          const toolCallResponse =
+            response.toolResults[0].result.content[0].text;
+
+          // speak
+          speak(toolCallResponse);
+
+          setMessages((prev) => [
+            ...prev,
+            {
+              text: toolCallResponse,
+              sender: "system",
+            },
+          ]);
+        } else {
+          if (
+            response.text === "REQUEST_HTML" ||
+            response.text === "SCREENSHOT"
+          ) {
+            // Don't add a message in these cases
+          } else {
+            // speak
+            speak(response.text);
+
+            setMessages((prev) => [
+              ...prev,
+              {
+                text: response.text,
+                sender: "system",
+              },
+            ]);
+          }
+        }
+      } catch (error) {
+        console.error("Error getting response:", error);
         setMessages((prev) => [
           ...prev,
           {
-            text: toolCallResponse,
+            text: "Sorry, I couldn't process your request. Please try again.",
             sender: "system",
           },
         ]);
-      } else {
-        if (response.text === "REQUEST_HTML" || response.text === "SCREENSHOT")
-          return;
-        setMessages((prev) => [
-          ...prev,
-          {
-            text: response.text,
-            sender: "system",
-          },
-        ]);
+      } finally {
+        // Hide loading state
+        setIsLoading(false);
       }
     }
   };
@@ -120,6 +164,91 @@ const ChatBubble = () => {
     }
   };
 
+  // Function to scroll to bottom of chat
+  const scrollToBottom = () => {
+    if (chatContainerRef.current) {
+      chatContainerRef.current.scrollTop =
+        chatContainerRef.current.scrollHeight;
+    }
+  };
+
+  // Scroll to bottom when messages change or loading state changes
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages, isLoading, showChat]);
+
+  // Update the message handler for screenshots
+  const handleScreenshotResponse = async (imgSrc) => {
+    setIsLoading(true);
+    try {
+      const response = await mcpClient(imgSrc);
+
+      if (response.toolResults.length) {
+        const toolCallResponse = response.toolResults[0].result.content[0].text;
+
+        // speak
+        speak(toolCallResponse);
+
+        setMessages((prev) => [
+          ...prev,
+          { text: toolCallResponse, sender: "system" },
+        ]);
+      } else {
+        // speak
+        speak(response.text);
+
+        setMessages((prev) => [
+          ...prev,
+          { text: response.text, sender: "system" },
+        ]);
+      }
+    } catch (error) {
+      console.error("Error processing screenshot:", error);
+      setMessages((prev) => [
+        ...prev,
+        { text: "Failed to process the screenshot.", sender: "system" },
+      ]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Update the HTML handler
+  const handleHtmlResponse = async (html) => {
+    setIsLoading(true);
+    try {
+      const response = await mcpClient(html);
+
+      if (response.toolResults.length) {
+        const toolCallResponse = response.toolResults[0].result.content[0].text;
+
+        // speak
+        speak(toolCallResponse);
+
+        setMessages((prev) => [
+          ...prev,
+          { text: toolCallResponse, sender: "system" },
+        ]);
+      } else {
+        // speak
+        speak(response.text);
+
+        setMessages((prev) => [
+          ...prev,
+          { text: response.text, sender: "system" },
+        ]);
+      }
+    } catch (error) {
+      console.error("Error processing HTML:", error);
+      setMessages((prev) => [
+        ...prev,
+        { text: "Failed to process the page content.", sender: "system" },
+      ]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   useEffect(() => {
     const SpeechRecognition =
       window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -132,71 +261,60 @@ const ChatBubble = () => {
 
     recognition.onresult = (event) => {
       const transcript = event.results[0][0].transcript;
+      setMessages((prev) => [...prev, { text: transcript, sender: "user" }]);
+      setIsLoading(true);
 
-      mcpClient(transcript);
-
-      setMessages((prev) => [...prev, { from: "user", text: transcript }]);
+      mcpClient(transcript)
+        .then((response) => {
+          if (response.toolResults.length) {
+            const toolCallResponse =
+              response.toolResults[0].result.content[0].text;
+            setMessages((prev) => [
+              ...prev,
+              { text: toolCallResponse, sender: "system" },
+            ]);
+          } else if (
+            response.text !== "REQUEST_HTML" &&
+            response.text !== "SCREENSHOT"
+          ) {
+            setMessages((prev) => [
+              ...prev,
+              { text: response.text, sender: "system" },
+            ]);
+          }
+        })
+        .catch((error) => {
+          console.error("Error in speech recognition:", error);
+          setMessages((prev) => [
+            ...prev,
+            {
+              text: "Sorry, I couldn't process your request.",
+              sender: "system",
+            },
+          ]);
+        })
+        .finally(() => {
+          setIsLoading(false);
+        });
     };
 
     recognition.onend = () => setListening(false);
 
     recognitionRef.current = recognition;
 
-    // speak();
-
     // attaching eventListners
     window.addEventListener("message", async function (event) {
-      debugger;
       // Optional: verify event.origin === expected parent origin
       if (event.data?.type === "SCREENSHOT") {
         const img = new Image();
         img.src = event.data.image;
         console.log(img);
-        const response = await mcpClient(img.src);
-
-        if (response.toolResults.length) {
-          const toolCallResponse =
-            response.toolResults[0].result.content[0].text;
-          console.log({ toolCallResponse });
-
-          // speak(toolCallResponse);
-
-          setMessages((prev) => [
-            ...prev,
-            { text: toolCallResponse, sender: "system" },
-          ]);
-        } else {
-          setMessages((prev) => [
-            ...prev,
-            { text: response.text, sender: "system" },
-          ]);
-        }
+        handleScreenshotResponse(img.src);
       }
 
       if (event.data?.type === "HTML") {
         console.log("Parent HTML received:", event.data.html);
-        // speak(event.data.html);
-        const response = await mcpClient(event.data.html);
-
-        if (response.toolResults.length) {
-          const toolCallResponse =
-            response.toolResults[0].result.content[0].text;
-          console.log({ toolCallResponse });
-
-          // speak(toolCallResponse);
-
-          setMessages((prev) => [
-            ...prev,
-            { text: toolCallResponse, sender: "system" },
-          ]);
-        } else {
-          // speak(response.text);
-
-          setMessages((prev) => [
-            ...prev,
-            { text: response.text, sender: "system" },
-          ]);
-        }
+        handleHtmlResponse(event.data.html);
       }
     });
   }, []);
@@ -217,24 +335,30 @@ const ChatBubble = () => {
             </Button>
           </div>
 
-          <div className="flex-1 overflow-y-auto border rounded-md p-2 bg-gray-50 mb-4">
+          <div
+            ref={chatContainerRef}
+            className="flex-1 overflow-y-auto border rounded-md p-2 bg-gray-50 mb-4"
+          >
             {messages.length === 0 ? (
               <div className="text-center text-gray-500 text-sm mt-32">
                 Start a conversation...
               </div>
             ) : (
-              messages.map((msg, index) => (
-                <div
-                  key={index}
-                  className={`mb-2 p-2 rounded-lg ${
-                    msg.sender === "user"
-                      ? "bg-primary text-white ml-auto"
-                      : "bg-gray-200 text-gray-800 mr-auto"
-                  } max-w-[75%]`}
-                >
-                  {msg.text}
-                </div>
-              ))
+              <>
+                {messages.map((msg, index) => (
+                  <div
+                    key={index}
+                    className={`mb-2 p-2 rounded-lg ${
+                      msg.sender === "user"
+                        ? "bg-primary text-white ml-auto"
+                        : "bg-gray-200 text-gray-800 mr-auto"
+                    } max-w-[75%]`}
+                  >
+                    {msg.text}
+                  </div>
+                ))}
+                {isLoading && <TypingIndicator />}
+              </>
             )}
           </div>
 
@@ -247,11 +371,12 @@ const ChatBubble = () => {
               placeholder="Type your message..."
               rows={1}
               style={{ minHeight: "38px", maxHeight: "100px" }}
+              disabled={isLoading}
             />
             <Button
               onClick={handleSendMessage}
               className="rounded-l-none h-[38px]"
-              disabled={!chatInput.trim()}
+              disabled={!chatInput.trim() || isLoading}
             >
               <Send className="h-4 w-4" />
             </Button>
