@@ -4,6 +4,62 @@
 
 [▶️ Watch the Demo Video of Chat Interaction](https://drive.google.com/file/d/1Evu24ItxcezhdoV-1LenzGx8ZVNfdzsX/view?usp=sharing)
 
+
+### Parent Injects the Chat App into the Dashboard
+```javascript
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+<script>
+// TO send html
+window.addEventListener("message", function(event) {
+  // Verify sender origin for security
+  // if (event.origin !== 'http://localhost:5173') return;
+  if (event.data.action === "REQUEST_HTML") {
+    // Send the HTML back to the iframe
+    event.source.postMessage(
+      {
+        html: document.body.innerText,
+        type: "HTML",
+      },
+      "*"
+    ); // Or specify exact target origin
+  }
+
+  if (event.data.action === "TAKE_SCREENSHOT") {
+    html2canvas(document.documentElement, {
+      allowTaint: true,
+      useCORS: true,
+      logging: false,
+      scrollX: 0,
+      scrollY: 0,
+      windowWidth: document.documentElement.offsetWidth,
+      windowHeight: document.documentElement.offsetHeight,
+      height: document.documentElement.scrollHeight,
+      width: document.documentElement.scrollWidth,
+      onclone: function(clonedDoc) {
+        // This captures elements with fixed positioning correctly
+        clonedDoc.documentElement.style.overflow = "hidden";
+      },
+    }).then((canvas) => {
+      const imageData = canvas.toDataURL("image/png");
+      const iframe = document.getElementById("myIframe");
+      console.log({ imageData });
+      iframe.contentWindow.postMessage(
+        {
+          type: "SCREENSHOT",
+          image: imageData,
+        },
+        "*"
+      ); // Replace '*' with exact origin in production
+    });
+  }
+});
+</script>
+
+<iframe id="myIframe" src="http://localhost:5173/" style="position: absolute; bottom:0; right:0; z-index: 50; border: none; height: 490px; width: 350px;"></iframe>
+```
+
+
 ### Architecture Components
 
 1. **Frontend**
@@ -45,3 +101,4 @@
    - Text/HTML is processed directly
 5. Processed requests are forwarded to Backend Server
 6. Results are returned through the same chain back to the user interface
+
