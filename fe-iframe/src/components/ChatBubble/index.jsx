@@ -8,6 +8,7 @@ import {
 } from "../ui/dropdown-menu";
 import { MessageCircle, Mic, Camera, X, Send } from "lucide-react";
 import { mcpClient, speak } from "../../services/mcp";
+import { chat } from "../../services/server";
 
 // Loading indicator component with animated dots
 const TypingIndicator = () => {
@@ -36,6 +37,7 @@ const ChatBubble = () => {
   const [messages, setMessages] = useState([]);
   const [listening, setListening] = useState(false);
   const [isLoading, setIsLoading] = useState(false); // Added loading state
+  const [userInput, setUserInput] = useState({ html: "", screenshot: "" });
   const recognitionRef = useRef(null);
   const chatContainerRef = useRef(null);
 
@@ -88,48 +90,32 @@ const ChatBubble = () => {
   const handleSendMessage = async () => {
     if (chatInput.trim()) {
       // MCP Client -> Users message
-      setMessages([...messages, { text: chatInput, sender: "user" }]);
-      setChatInput("");
+      // setMessages([...messages, { text: chatInput, sender: "user" }]);
+      // setChatInput("");
 
       // Show loading state
       setIsLoading(true);
 
       try {
-        const response = await mcpClient(chatInput);
+        console.log("Requesting for HTML and SCREENSHOTS...");
 
-        if (response?.toolResults?.length) {
-          const toolCallResponse =
-            response.toolResults[0].result.content[0].text;
+        // sending event to parent to get the html
+        window.parent.postMessage(
+          {
+            action: "REQUEST_HTML",
+            from: "iframe",
+          },
+          "*"
+        );
 
-          // speak
-          speak(toolCallResponse);
-
-          setMessages((prev) => [
-            ...prev,
-            {
-              text: toolCallResponse,
-              sender: "system",
-            },
-          ]);
-        } else {
-          if (
-            response.text === "REQUEST_HTML" ||
-            response.text === "SCREENSHOT"
-          ) {
-            // Don't add a message in these cases
-          } else {
-            // speak
-            speak(response.text);
-
-            setMessages((prev) => [
-              ...prev,
-              {
-                text: response.text,
-                sender: "system",
-              },
-            ]);
-          }
-        }
+        // sending event to parent to get the screenshot
+        window.parent.postMessage(
+          {
+            action: "TAKE_SCREENSHOT",
+            from: "iframe",
+          },
+          "*"
+        );
       } catch (error) {
         console.error("Error getting response:", error);
         setMessages((prev) => [
@@ -183,7 +169,7 @@ const ChatBubble = () => {
     try {
       const response = await mcpClient(imgSrc);
 
-      if (response.toolResults.length) {
+      if (response?.toolResults?.length) {
         const toolCallResponse = response.toolResults[0].result.content[0].text;
 
         // speak
@@ -219,7 +205,7 @@ const ChatBubble = () => {
     try {
       const response = await mcpClient(html);
 
-      if (response.toolResults.length) {
+      if (response?.toolResults?.length) {
         const toolCallResponse = response.toolResults[0].result.content[0].text;
 
         // speak
@@ -250,74 +236,106 @@ const ChatBubble = () => {
   };
 
   useEffect(() => {
-    const SpeechRecognition =
-      window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SpeechRecognition) return;
+    // const SpeechRecognition =
+    //   window.SpeechRecognition || window.webkitSpeechRecognition;
+    // if (!SpeechRecognition) return;
 
-    const recognition = new SpeechRecognition();
-    recognition.lang = "en-US";
-    recognition.continuous = false;
-    recognition.interimResults = false;
+    // const recognition = new SpeechRecognition();
+    // recognition.lang = "en-US";
+    // recognition.continuous = false;
+    // recognition.interimResults = false;
 
-    recognition.onresult = (event) => {
-      const transcript = event.results[0][0].transcript;
-      setMessages((prev) => [...prev, { text: transcript, sender: "user" }]);
-      setIsLoading(true);
+    // recognition.onresult = (event) => {
+    //   const transcript = event.results[0][0].transcript;
+    //   setMessages((prev) => [...prev, { text: transcript, sender: "user" }]);
+    //   setIsLoading(true);
 
-      mcpClient(transcript)
-        .then((response) => {
-          if (response.toolResults.length) {
-            const toolCallResponse =
-              response.toolResults[0].result.content[0].text;
-            setMessages((prev) => [
-              ...prev,
-              { text: toolCallResponse, sender: "system" },
-            ]);
-          } else if (
-            response.text !== "REQUEST_HTML" &&
-            response.text !== "SCREENSHOT"
-          ) {
-            setMessages((prev) => [
-              ...prev,
-              { text: response.text, sender: "system" },
-            ]);
-          }
-        })
-        .catch((error) => {
-          console.error("Error in speech recognition:", error);
-          setMessages((prev) => [
-            ...prev,
-            {
-              text: "Sorry, I couldn't process your request.",
-              sender: "system",
-            },
-          ]);
-        })
-        .finally(() => {
-          setIsLoading(false);
-        });
-    };
+    //   mcpClient(transcript)
+    //     .then((response) => {
+    //       if (response?.toolResults?.length) {
+    //         const toolCallResponse =
+    //           response.toolResults[0].result.content[0].text;
+    //         setMessages((prev) => [
+    //           ...prev,
+    //           { text: toolCallResponse, sender: "system" },
+    //         ]);
+    //       } else if (
+    //         response.text !== "REQUEST_HTML" &&
+    //         response.text !== "SCREENSHOT"
+    //       ) {
+    //         setMessages((prev) => [
+    //           ...prev,
+    //           { text: response.text, sender: "system" },
+    //         ]);
+    //       }
+    //     })
+    //     .catch((error) => {
+    //       console.error("Error in speech recognition:", error);
+    //       setMessages((prev) => [
+    //         ...prev,
+    //         {
+    //           text: "Sorry, I couldn't process your request.",
+    //           sender: "system",
+    //         },
+    //       ]);
+    //     })
+    //     .finally(() => {
+    //       setIsLoading(false);
+    //     });
+    // };
 
-    recognition.onend = () => setListening(false);
+    // recognition.onend = () => setListening(false);
 
-    recognitionRef.current = recognition;
+    // recognitionRef.current = recognition;
 
     // attaching eventListners
+
     window.addEventListener("message", async function (event) {
       // Optional: verify event.origin === expected parent origin
       if (event.data?.type === "SCREENSHOT") {
         const img = new Image();
         img.src = event.data.image;
         console.log(img);
-        handleScreenshotResponse(img.src);
+        setUserInput((prev) => ({ ...prev, screenshot: img.src }));
+        // handleScreenshotResponse(img.src);
       }
 
       if (event.data?.type === "HTML") {
         console.log("Parent HTML received:", event.data.html);
-        handleHtmlResponse(event.data.html);
+        setUserInput((prev) => ({ ...prev, html: event.data.html }));
+        // handleHtmlResponse(event.data.html);
       }
     });
   }, []);
+
+  console.log({ userInput });
+
+  useEffect(() => {
+    if (userInput.html && userInput.screenshot) {
+      const sendMessage = async () => {
+        if (userInput.html && userInput.screenshot) {
+          setMessages((prevMessages) => [
+            ...prevMessages,
+            { text: chatInput, sender: "user" },
+          ]);
+          setChatInput("");
+
+          const reqBody = {
+            chatInput,
+            html: userInput.html,
+            screenshot: userInput.screenshot,
+          };
+          const response = await chat(reqBody);
+
+          setMessages((prevMessages) => [
+            ...prevMessages,
+            { text: response, sender: "system" },
+          ]);
+        }
+      };
+      sendMessage();
+    }
+  }, [userInput.html, userInput.screenshot]);
 
   return (
     <div className="fixed bottom-6 right-6 z-50">

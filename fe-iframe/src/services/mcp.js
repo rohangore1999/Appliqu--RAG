@@ -8,6 +8,9 @@ import { createOpenAI } from "@ai-sdk/openai";
 // Helpers
 import { base64ToObjectURL, isBase64Image } from "../helpers/common";
 
+// Services
+import { getImageDetails } from "./server";
+
 const openai = createOpenAI({
   apiKey: import.meta.env.VITE_OPENAI_API_KEY || "<your_key>",
 });
@@ -55,7 +58,8 @@ export const mcpClient = async (userInput) => {
 
       console.log({ compressedImage });
 
-      aiInput = compressedImage;
+      // aiInput = compressedImage;
+      aiInput = await getImageDetails(userInput);
     } else {
       aiInput = userInput;
     }

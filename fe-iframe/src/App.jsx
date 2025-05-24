@@ -138,7 +138,7 @@ export default function App() {
   //     console.log("response >>>", response);
 
   //     debugger;
-  //     if (response.toolResults.length) {
+  //     if (response?.toolResults?.length) {
   //       const toolCallResponse = response.toolResults[0].result.content[0].text;
   //       console.log({ toolCallResponse });
 

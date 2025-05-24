@@ -1,15 +1,28 @@
 from flask import Flask, request, jsonify
+from flask_cors import CORS
 import os
 from dotenv import load_dotenv
 from ingest import ingest_components
 from query import process_query
+from chat import chat
 from openai import OpenAI
+import ssl
+import httpx
+import asyncio
 
 load_dotenv()
 
 app = Flask(__name__)
+CORS(app, resources={r"/*": {"origins": "http://localhost:5173"}})
 
 COMPONENT_NAMES_FILE = "component_names.txt"
+
+# Create a custom SSL context that doesn't verify certificates
+ssl_context = ssl.create_default_context()
+ssl_context.check_hostname = False
+ssl_context.verify_mode = ssl.CERT_NONE
+# Create a custom HTTP client with SSL verification disabled
+http_client = httpx.Client(verify=False)
 
 @app.route("/ingest", methods=["POST"])
 def ingest():
@@ -63,7 +76,8 @@ def describe_image():
     try:
         # Initialize OpenAI client similar to your example code
         openai_client = OpenAI(
-            api_key=os.getenv("OPEN_API_KEY")
+            api_key=os.getenv("OPEN_API_KEY"),
+            http_client=http_client
         )
         
         # Base64 image URL should already be in format: data:image/jpeg;base64,...
@@ -89,9 +103,18 @@ def describe_image():
                 {
                     "role": "user", 
                     "content": [
-                        {"type": "text", "text": "Please describe this image in detail."},
-                        {"type": "image_url", "image_url": {"url": base64_image_url}}
-                    ]
+                        { "type": "text", "text": "ONLY describe THE GRAPHS, IMAGES, MAPS, CHARTS in details for seller in layman's term. DONT CONSIDER THE TABLES AND OTHER TEXT APART FROM GRAPHS, IMAGES, MAPS, CHARTS" },
+                        {
+                            "type": "image_url",
+                            "image_url": {"url": base64_image_url},
+                        },
+                    ],
+                    # TO READ URLS
+                    # "content": [
+                    #     {"type": "text", "text": "Please describe this image in detail."},
+                    #     # can't give local blob image as openai trying to access, give invalid
+                    #     {"type": "image_url", "image_url": {"url": "https://userscreenshots.s3.ap-south-1.amazonaws.com/Screenshot+2025-05-17+at+9.58.08%E2%80%AFPM.png"}} 
+                    # ]
                 }
             ],
             max_tokens=300
@@ -110,6 +133,23 @@ def describe_image():
             
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+@app.route("/chat", methods=["POST"])
+def get_details():
+    if not os.getenv("OPEN_API_KEY"):
+        return jsonify({"error": "OPEN_API_KEY not found in environment variables."}), 400
     
+    data = request.get_json()
+    if not data or "user_input" not in data:
+        return jsonify({"error": "Missing 'user_input' in request body."}), 400
+
+    try:
+        # to wait for the result
+        result = asyncio.run(chat(data["user_input"]))
+        print("result", result)
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5001, debug=True) 
